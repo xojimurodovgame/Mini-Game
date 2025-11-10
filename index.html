@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whack-a-Mole</title>
+<style>
+body {
+  margin:0;
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  background:#f0f0f0;
+  min-height:100vh;
+}
+h1 { margin:20px 0 10px 0; color:#333; text-align:center; }
+#app {
+  background:#fff;
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 10px 20px rgba(0,0,0,0.2);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:90%;
+  max-width:400px;
+}
+#timer, #score, #highscore, #message { font-size:18px; margin:5px 0; text-align:center; }
+#game {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-gap:10px;
+  margin-top:20px;
+  width:100%;
+}
+.hole {
+  position:relative;
+  width:100%;
+  padding-top:100%;
+  background:#654321;
+  border-radius:50%;
+  cursor:pointer;
+  overflow:hidden;
+}
+.mole {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  width:70%;
+  height:70%;
+  display:none;
+}
+.mole img { width:100%; height:100%; object-fit:contain; transition: transform 0.2s; }
+.mole img:active { transform: scale(1.2); }
+button {
+  padding:10px 20px;
+  font-size:18px;
+  margin-top:10px;
+  display:none;
+  border:none;
+  border-radius:10px;
+  background:#4CAF50;
+  color:white;
+  cursor:pointer;
+  z-index:10;
+}
+button:hover { background:#45a049; }
+</style>
+</head>
+<body>
+<h1>Whack-a-Mole</h1>
+<div id="app">
+  <div id="timer">Vaqt: 30</div>
+  <div id="game">
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+    <div class="hole"><div class="mole"></div></div>
+  </div>
+  <p id="score">Ball: 0</p>
+  <p id="highscore">Eng yuqori ball: 0</p>
+  <p id="message"></p>
+  <button id="restartBtn">Qayta boshlash</button>
+</div>
+
+<script>
+const holes = document.querySelectorAll('.hole');
+const moleImgURL = "https://cdn-icons-png.flaticon.com/512/616/616556.png";
+
+let score = 0;
+let highscore = localStorage.getItem('whackHighscore') || 0;
+document.getElementById('highscore').textContent = 'Eng yuqori ball: ' + highscore;
+
+let gameActive = false;
+let timeLeft = 30;
+let countdownInterval = null;
+let moleTimeout = null;
+
+const timerDisplay = document.getElementById('timer');
+const restartBtn = document.getElementById('restartBtn');
+
+// Chuvalchangni ko'rsatish funktsiyasi
+function showMole(){
+  if(!gameActive) return;
+  holes.forEach(h => h.children[0].style.display='none');
+  const i = Math.floor(Math.random() * holes.length);
+  const mole = holes[i].children[0];
+  mole.innerHTML = `<img src="${moleImgURL}" alt="chuvalchang">`;
+  mole.style.display='block';
+  
+  // Chuvalchang 1.8s ko'rinadi (sekunti oshirildi)
+  clearTimeout(moleTimeout);
+  moleTimeout = setTimeout(()=>{ mole.style.display='none'; }, 1800);
+}
+
+function startGame(){
+  clearInterval(countdownInterval);
+  clearTimeout(moleTimeout);
+
+  score = 0;
+  timeLeft = 30;
+  gameActive = true;
+  document.getElementById('score').textContent = 'Ball: 0';
+  document.getElementById('message').textContent = '';
+  restartBtn.style.display = 'none';
+
+  showMole();
+  // Har 1.8s yangi mole chiqadi
+  moleTimeout = setInterval(showMole, 1800);
+
+  countdownInterval = setInterval(()=>{
+    if(!gameActive) return;
+    timeLeft--;
+    timerDisplay.textContent = 'Vaqt: ' + timeLeft;
+    if(timeLeft <= 0) endGame('Vaqt tugadi!');
+  }, 1000);
+}
+
+function endGame(msg){
+  gameActive = false;
+  document.getElementById('message').textContent = msg + ' Yakuniy ball: ' + score;
+  restartBtn.style.display = 'inline-block';
+  clearInterval(countdownInterval);
+  clearInterval(moleTimeout);
+  holes.forEach(h => h.children[0].style.display='none');
+}
+
+// Chuvalchangni bosish
+holes.forEach(h => {
+  h.addEventListener('click', e => {
+    if(!gameActive) return;
+    if(e.target.tagName === 'IMG'){
+      score++;
+      document.getElementById('score').textContent = 'Ball: '+score;
+      e.target.parentElement.style.display='none';
+      if(score > highscore){
+        highscore = score;
+        document.getElementById('highscore').textContent = 'Eng yuqori ball: ' + highscore;
+        localStorage.setItem('whackHighscore', highscore);
+      }
+      showMole();
+    }
+  });
+});
+
+// Body click listener, restart tugmasiga ta'sir qilmasligi
+document.body.addEventListener('click', e => {
+  if(!gameActive) return;
+  if(!e.target.closest('#game') && e.target !== restartBtn){
+    endGame('Boshqa joyni bosdingiz!');
+  }
+});
+
+// Restart tugmasi bosilganda avtomatik o‘yinni boshlaydi
+restartBtn.addEventListener('click', startGame);
+
+// Dastlab o‘yinni boshlash
+startGame();
+</script>
+</body>
+</html>
